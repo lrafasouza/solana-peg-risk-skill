@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 1: Offline classify tests — the HARD GATE.
+  #
+  # Runs the deterministic vitest suite (tests/classify.test.ts) with no
+  # network access, no API keys, and no side effects. This job MUST be green
+  # before a PR can merge.
+  # ──────────────────────────────────────────────────────────────────────────
+  classify:
+    name: Offline classify tests (vitest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: reference/package.json
+
+      - name: Install dependencies
+        working-directory: reference
+        run: npm install
+
+      - name: Run offline classify tests
+        working-directory: reference
+        run: npm test
+        # Runs: vitest run --root .. tests/classify.test.ts
+        # No network, no ANTHROPIC_API_KEY, no Helius key required.
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 2: Haiku trigger test — NON-BLOCKING (key-gated).
+  #
+  # Verifies that the peg-risk skill description correctly routes real DeFi
+  # builder prompts. Requires ANTHROPIC_API_KEY; skipped on forks and on
+  # commits where the secret is absent. Failures here are informational —
+  # they do NOT block merges (continue-on-error: true).
+  #
+  # To run this locally:
+  #   cd tests && npm install && ANTHROPIC_API_KEY=sk-... npm run test:trigger
+  # ──────────────────────────────────────────────────────────────────────────
+  trigger:
+    name: Haiku trigger test (key-gated, non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    # Only run when the secret is available (skips on untrusted forks)
+    if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: tests/package.json
+
+      - name: Install trigger harness dependencies
+        working-directory: tests
+        run: npm install
+
+      - name: Run Haiku trigger harness
+        working-directory: tests
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run test:trigger
