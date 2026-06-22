@@ -4,9 +4,11 @@
   "description": "Reference implementation: TypeScript port of the public MIT peg-risk methodology + live mainnet demo",
   "type": "module",
   "scripts": {
-    "test": "vitest run --root .. tests/classify.test.ts",
+    "test": "vitest run --root .. tests/",
     "test:local": "vitest run",
     "demo": "tsx assess.ts",
+    "screen": "tsx screen.ts",
+    "backtest": "tsx backtest.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

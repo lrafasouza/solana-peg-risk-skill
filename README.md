@@ -128,11 +128,15 @@ solana-peg-risk-skill/
 │   └── onchain-reads.md     # read-only / never-sign / devnet / untrusted-data rules
 ├── reference/
 │   ├── classify.ts          # TS port of the public Rust methodology (pure functions)
+│   ├── assets.ts            # catalog of real Solana stablecoins/LSTs (mints + per-asset config)
 │   ├── assess.ts            # live mainnet demo: pull → classify → print verdict + params
+│   ├── screen.ts            # live catalog screener (Jupiter prices → classify USD-anchored)
+│   ├── backtest.ts          # classifier vs documented historical depegs (USDC-SVB, UST, stETH…)
 │   ├── package.json         # @solana/kit, @pythnetwork/hermes-client, vitest, tsx
-│   └── README.md            # how to run classify tests + the live demo
+│   └── README.md            # how to run the tests, the live demo, the screen and the backtest
 └── tests/
-    ├── classify.test.ts     # deterministic offline unit tests (vitest) — the CI gate
+    ├── classify.test.ts     # 89 deterministic offline unit tests (vitest) — CI gate
+    ├── backtest.test.ts     # 15 historical-depeg assertions (vitest) — CI gate
     ├── run.ts               # Haiku trigger harness (does the description route?)
     └── package.json
 ```
@@ -232,23 +236,50 @@ Positive discount = market below intrinsic (stress). Negative discount = premium
 
 `reference/classify.ts` is a pure-function TypeScript port of the public Rust methodology (`crates/methodology/src/{thresholds,discount,ewma,transition}.rs`). No network, no keys — deterministic on any input.
 
-`tests/classify.test.ts` (vitest) covers ~25–30 cases including boundary assertions for every threshold band, LST and yield-stable direction sensitivity, hysteresis enter/hold/exit for both spread and CR paths, NAV-sanity boundary, zero-intrinsic null routing, and the `|d| >= 1.0` strict plausibility bound. **89 tests, CI-green, no network dependency.**
+**104 offline tests, CI-green, zero network dependency** — 89 unit tests (`tests/classify.test.ts`: every threshold-band boundary, LST/yield direction sensitivity, hysteresis enter/hold/exit on both the spread and CR paths, the NAV-sanity bound, zero-intrinsic null routing, and the strict `|d| ≥ 1.0` plausibility bound) plus 15 historical-depeg assertions (`tests/backtest.test.ts`).
 
-To run the offline tests:
+### Validated against real depegs
 
-```bash
-cd tests
-npm install
-npx vitest run
+`npm run backtest` runs the classifier against documented historical events — it fires the correct severe state on real depegs and never false-alarms on the healthy controls:
+
+```
+✓ BLACK_SWAN  USDC   — SVB bank run        (2023-03-11, $0.877)
+✓ BLACK_SWAN  DAI    — USDC contagion      (2023-03-11, $0.897)
+✓ BLACK_SWAN  UST    — Terra collapse      (2022-05-12, $0.10)
+✓ BLACK_SWAN  stETH  — Celsius/3AC         (2022-06-13, $0.935; LST discount path)
+✓ DRIFT / DEPEG / CRITICAL  — fiat band coverage (0.998 / 0.994 / 0.975)
+✓ CRITICAL    hyUSD  — CR 105% (CR path, market at par)
+✓ BLACK_SWAN  hyUSD  — CR 95%  (insolvent)
+✓ PEGGED      USDC 0.9997 · jitoSOL +79 bps premium · USDY +20 bps NAV premium  (controls)
+
+12/12 historical scenarios classified as expected.
 ```
 
-To run the live mainnet demo (needs `HELIUS_API_KEY` optional):
+Figures are documented historical lows; UST / stETH / DAI are cross-chain or algorithmic, included to exercise the fiat-discount, LST-discount and CR paths the classifier implements.
+
+### Live catalog screen
+
+`npm run screen` pulls real Jupiter prices for the asset catalog and classifies the USD-anchored assets live (captured run):
+
+```
+SYMBOL   CLASS         ANCHOR MARKET     STATE      DETAIL
+USDC     stable_fiat   USD    0.9998     PEGGED     1 bps discount
+USDT     stable_fiat   USD    0.9989     PEGGED     11 bps discount
+PYUSD    stable_fiat   USD    0.9999     PEGGED     1 bps discount
+USDS     stable_fiat   USD    0.9997     PEGGED     3 bps discount
+jitoSOL  lst           SOL    95.56      NEEDS-NAV  intrinsic via sanctum-lst (run: npm run demo <mint>)
+USDY     stable_yield  NAV    1.1379     NEEDS-NAV  intrinsic via pyth (NAV grows above $1)
+```
+
+### Running it
 
 ```bash
 cd reference
 npm install
-HELIUS_API_KEY=your_key npx tsx assess.ts EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v  # USDC
-HELIUS_API_KEY=your_key npx tsx assess.ts J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn  # jitoSOL
+npm test             # 104 offline tests — the CI gate
+npm run backtest     # the historical-depeg table above
+npm run screen       # live catalog screen (Jupiter, keyless)
+npm run demo <mint>  # full single-asset live assessment (HELIUS_API_KEY optional)
 ```
 
 ---

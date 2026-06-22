@@ -8,10 +8,13 @@ Pure TypeScript implementation of the public MIT peg-risk methodology
 | File | Purpose |
 |---|---|
 | `classify.ts` | Pure functions (no network). The CI gate. |
+| `assets.ts` | Catalog of real Solana stablecoins/LSTs (mints + per-asset config). |
 | `assess.ts` | Live mainnet demo: pull intrinsic + market → classify → print verdict. |
+| `screen.ts` | Live catalog screener (Jupiter prices → classify USD-anchored). |
+| `backtest.ts` | Classifier vs documented historical depegs (USDC-SVB, UST, stETH…). |
 | `package.json` | `type: module`; deps: `@solana/kit`, `@pythnetwork/hermes-client`. |
 
-The unit tests live in `../tests/classify.test.ts` (deterministic, no network, the CI gate).
+The unit tests live in `../tests/classify.test.ts` (89) and `../tests/backtest.test.ts` (15) — deterministic, no network, the CI gate (104 total).
 
 ---
 
@@ -25,9 +28,15 @@ npm test
 npx vitest ../tests/classify.test.ts
 ```
 
-The test suite covers ~25–30 cases: boundary conditions, hysteresis enter/hold/exit,
-LST/yield-stable premium → PEGGED, CR path, plausibility rejection, premium-sanity
-UNKNOWN, zero/null intrinsic → null, and the F-12 overflow guard.
+The suite is **104 tests**: `classify.test.ts` (boundary conditions, hysteresis
+enter/hold/exit, LST/yield-stable premium → PEGGED, CR path, plausibility rejection,
+premium-sanity UNKNOWN, zero/null intrinsic → null, the F-12 overflow guard) and
+`backtest.test.ts` (documented historical depegs). Two more runnable views:
+
+```bash
+npm run backtest   # classifier vs historical depegs (USDC-SVB, UST, stETH, …)
+npm run screen     # live catalog screen against real Jupiter prices (keyless)
+```
 
 ---
 
@@ -92,8 +101,8 @@ reading. The on-chain intrinsic for these requires reading issuer-specific Hylo 
 accounts; the method is documented in `../skill/computing-spread.md`.
 
 ```bash
-npm run demo HYUSAiER4bv6eXDL3oHMM9QKNrVKfSTjLuemDjWQHs1N  # hyUSD → recipe
-npm run demo xLfYxeGZ3eTfe4WuoH45wRFQx2iRNsWiS3hKJJCnmqn   # xSOL  → recipe
+npm run demo HUSDm9cvmSEMBbMHpFbJwsLGKBFnM6JNXR2NHHQ7kNFi  # hyUSD → recipe (CR via Hylo on-chain)
+# xSOL: mint TODO — see reference/assets.ts + skill/computing-spread.md for the on-chain recipe
 ```
 
 ---
