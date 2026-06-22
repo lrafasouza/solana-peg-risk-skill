@@ -2,7 +2,7 @@
 
 A Claude Code skill that teaches a coding agent to assess depeg risk of any Solana stablecoin or liquid-staking token before integrating, accepting it as collateral, routing through it, or listing it — and to emit pasteable risk parameters the integrator ships directly to config.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/OWNER/solana-peg-risk-skill/ci.yml?branch=main&label=tests)](https://github.com/OWNER/solana-peg-risk-skill/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/lrafasouza/solana-peg-risk-skill/ci.yml?branch=main&label=tests)](https://github.com/lrafasouza/solana-peg-risk-skill/actions/workflows/ci.yml)
 
 ---
 
